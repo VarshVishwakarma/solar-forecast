@@ -3,6 +3,7 @@ import requests
 import pandas as pd
 import matplotlib.pyplot as plt
 import math
+import os
 
 # 1. Page Configuration (Must be first)
 st.set_page_config(
@@ -63,6 +64,19 @@ def user_input_features():
 
 input_data, selected_hour = user_input_features()
 
+# ✅ FIX 1: Cache Data Loading
+# This prevents Streamlit from re-reading the CSV on every tiny UI interaction
+@st.cache_data
+def load_data(path):
+    if not os.path.exists(path):
+        # Fallback logic for different execution contexts
+        alt_path = "../" + path
+        if os.path.exists(alt_path):
+            return pd.read_csv(alt_path)
+        else:
+            raise FileNotFoundError(f"Could not find {path} or {alt_path}")
+    return pd.read_csv(path)
+
 # 4. Main Dashboard Layout
 st.title("☀️ Solar Power Forecasting System")
 st.markdown("Predict future solar energy output using a machine learning model served via FastAPI.")
@@ -105,36 +119,39 @@ with col2:
     st.subheader("📊 Historical Analysis")
     st.caption("Context from training data (Actual Power vs GHI)")
     
-    # Load Data
-    data_path = "data/final_solar_dataset.csv"
     try:
-        # Check if file exists relative to where streamlit is run
-        import os
-        if not os.path.exists(data_path):
-            # Fallback for notebook/ vs root execution differences
-            data_path = "../data/final_solar_dataset.csv"
-            
-        df = pd.read_csv(data_path)
+        data_path = "data/final_solar_dataset.csv"
+        # Use the cached loader
+        df = load_data(data_path)
         
-        # Plotting
-        fig, ax = plt.subplots(figsize=(10, 5))
+        # ✅ FIX 2: Lock Chart Size & Styling
+        # Smaller fixed size (8x4) prevents responsive resize loops in iframes
+        fig, ax = plt.subplots(figsize=(8, 4))
         
-        # Scatter plot
-        scatter = ax.scatter(df['ghi'], df['power_output'], alpha=0.6, c=df['temperature'], cmap='coolwarm', s=15)
+        # Scatter plot with slightly lighter points
+        scatter = ax.scatter(
+            df['ghi'], 
+            df['power_output'], 
+            alpha=0.6, 
+            c=df['temperature'], 
+            cmap='coolwarm', 
+            s=12
+        )
         
-        # Add a marker for current input
-        ax.scatter([input_data['ghi']], [0], color='red', s=100, marker='x', label='Current Input GHI')
+        # Marker for current input
+        ax.scatter([input_data['ghi']], [0], color='red', s=80, marker='x', label='Current Input GHI')
         
         # Styling
-        cbar = plt.colorbar(scatter, ax=ax)
+        cbar = plt.colorbar(scatter, ax=ax, fraction=0.046, pad=0.04)
         cbar.set_label('Temperature (°C)')
         ax.set_xlabel("Global Horizontal Irradiance (GHI)")
         ax.set_ylabel("Power Output (Watts)")
-        ax.set_title(f"Historical Power vs GHI (Colored by Temp)")
-        ax.legend()
+        ax.set_title("Historical Power vs GHI (Colored by Temp)")
+        ax.legend(loc="upper left")
         ax.grid(True, linestyle='--', alpha=0.3)
         
-        st.pyplot(fig)
+        # clear_figure=True helps memory management in Streamlit
+        st.pyplot(fig, clear_figure=True)
         
         with st.expander("View Raw Data"):
             st.dataframe(df.sample(100).sort_values("timestamp"), height=200)
