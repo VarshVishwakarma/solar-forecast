@@ -6,10 +6,11 @@ import math
 import os
 
 # 1. Page Configuration (Must be first)
+# ✅ FIX 3: Switch to centered layout to stop wide-mode resize loops on HF
 st.set_page_config(
     page_title="Solar Forecast AI",
     page_icon="☀️",
-    layout="wide"
+    layout="centered"
 )
 
 # 2. Custom Styling
@@ -27,6 +28,10 @@ st.markdown("""
         background-color: #FF4B4B;
         color: white;
         font-weight: bold;
+    }
+    /* ✅ FIX 4: Stop iframe height oscillation on Hugging Face */
+    iframe {
+        height: 100% !important;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -150,8 +155,10 @@ with col2:
         ax.legend(loc="upper left")
         ax.grid(True, linestyle='--', alpha=0.3)
         
-        # clear_figure=True helps memory management in Streamlit
-        st.pyplot(fig, clear_figure=True)
+        # ✅ FIX 5: Freeze chart in container (Prevents HF iframe resizing jitter)
+        plot_container = st.container()
+        with plot_container:
+            st.pyplot(fig, clear_figure=True)
         
         with st.expander("View Raw Data"):
             st.dataframe(df.sample(100).sort_values("timestamp"), height=200)
