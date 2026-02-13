@@ -2,6 +2,8 @@ import os
 import logging
 import joblib
 import numpy as np
+import csv  # ✅ Added for logging
+from datetime import datetime  # ✅ Added for timestamps
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
@@ -13,15 +15,19 @@ logger = logging.getLogger(__name__)
 # Global dictionary to store model artifacts
 ml_models = {}
 
+# Version Control
+MODEL_VERSION = "v2.0"
+
 # 2. Lifespan Manager (Modern startup/shutdown logic)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # --- Startup Logic ---
-    logger.info("🔄 Loading ML models...")
+    logger.info(f"🔄 Loading ML models (Version: {MODEL_VERSION})...")
     try:
         base_dir = os.path.dirname(os.path.abspath(__file__))
-        model_path = os.path.join(base_dir, "model.joblib")
-        scaler_path = os.path.join(base_dir, "scaler.joblib")
+        # Updated filenames to include versioning
+        model_path = os.path.join(base_dir, "model_v2.joblib")
+        scaler_path = os.path.join(base_dir, "scaler_v2.joblib")
 
         if os.path.exists(model_path) and os.path.exists(scaler_path):
             ml_models["model"] = joblib.load(model_path)
@@ -29,6 +35,7 @@ async def lifespan(app: FastAPI):
             logger.info("✅ Model and Scaler loaded successfully.")
         else:
             logger.error("⚠️ Critical: Model or Scaler file not found in app/ directory.")
+            logger.info(f"Expected: {model_path}")
     except Exception as e:
         logger.error(f"❌ Error loading models: {e}")
 
@@ -41,7 +48,7 @@ async def lifespan(app: FastAPI):
 # 3. Initialize FastAPI with lifespan
 app = FastAPI(
     title="Solar Power Prediction API", 
-    version="2.0",
+    version="2.1",
     description="Production-ready API for Solar Irradiance Forecasting",
     lifespan=lifespan
 )
@@ -63,7 +70,7 @@ def health_check():
     response = {
         "status": "ok", 
         "message": "Solar Forecasting API is ready",
-        "documentation_url": "/docs"  # Added hint for navigation
+        "documentation_url": "/docs"
     }
     if not ml_models:
         response["status"] = "warning"
@@ -73,12 +80,13 @@ def health_check():
 @app.get("/health")
 def health():
     """Ops-friendly health check endpoint."""
-    return {"status": "ok", "model_version": "v1.0"}
+    return {"status": "ok", "model_version": MODEL_VERSION}
 
 @app.post("/predict")
 def predict_solar_power(data: SolarInput):
     """
     Predicts solar power output based on weather and lag features.
+    Logs inputs and predictions to app/prediction_logs.csv.
     """
     if "model" not in ml_models or "scaler" not in ml_models:
         raise HTTPException(status_code=503, detail="ML Model is not loaded available")
@@ -102,11 +110,40 @@ def predict_solar_power(data: SolarInput):
         # Predict
         model = ml_models["model"]
         prediction = model.predict(scaled_features)
+        pred_value = float(prediction[0])
+
+        # --- 📝 LOGGING LOGIC ---
+        try:
+            # We use absolute path to ensure logs are saved in the app folder regardless of where script is run
+            base_dir = os.path.dirname(os.path.abspath(__file__))
+            log_file = os.path.join(base_dir, "prediction_logs.csv")
+            
+            file_exists = os.path.isfile(log_file)
+            
+            with open(log_file, mode="a", newline="") as f:
+                writer = csv.writer(f)
+                # Write Header if file is new
+                if not file_exists:
+                    writer.writerow(["timestamp", "temperature", "humidity", "ghi", "power_t_1", "power_t_2", "predicted_power"])
+                
+                # Write Data Row
+                writer.writerow([
+                    datetime.utcnow().isoformat(),
+                    data.temperature,
+                    data.humidity,
+                    data.ghi,
+                    data.power_t_1,
+                    data.power_t_2,
+                    pred_value
+                ])
+        except Exception as log_error:
+            # We catch logging errors so they don't crash the user's prediction request
+            logger.error(f"⚠️ Failed to write log: {log_error}")
 
         return {
-            "predicted_power": float(prediction[0]),
+            "predicted_power": pred_value,
             "unit": "Watts",
-            "model_version": "v1.0"
+            "model_version": MODEL_VERSION
         }
 
     except Exception as e:
@@ -119,3 +156,4 @@ if __name__ == "__main__":
     print("\n🌞 Solar API is starting...")
     print("👉 Open this link for the Dashboard: http://127.0.0.1:8000/docs")
     print() # Print a clean newline
+    uvicorn.run(app, host="127.0.0.1", port=8000)

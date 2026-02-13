@@ -77,7 +77,7 @@ with col1:
     if st.button("Generate Forecast", type="primary"):
         try:
             # Call FastAPI Endpoint
-            api_url = "http://localhost:8000/predict"
+            api_url = "http://127.0.0.1:8000/predict"
             response = requests.post(api_url, json=input_data)
             
             if response.status_code == 200:

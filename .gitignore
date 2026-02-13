@@ -1,0 +1,5 @@
+app/prediction_logs.csv
+__pycache__/
+*.pyc
+.venv/
+venv/
