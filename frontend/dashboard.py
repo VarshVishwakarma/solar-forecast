@@ -100,11 +100,16 @@ with col1:
             default_url = "http://127.0.0.1:8000/predict"
             api_url = os.getenv("API_URL", default_url)
             
+            # Ensure the endpoint is correct if only the base URL was provided
+            if not api_url.endswith("/predict"):
+                api_url = api_url.rstrip("/") + "/predict"
+            
             response = requests.post(api_url, json=input_data)
             
             if response.status_code == 200:
                 result = response.json()
-                pred_power = result["predicted_power"]
+                # Use the key provided by your API (predicted_power)
+                pred_power = result.get("predicted_power", result.get("prediction", 0))
                 version = result.get("model_version", "N/A")
                 
                 # Display Result (KPI Card Style)
