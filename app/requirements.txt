@@ -1,10 +1,10 @@
 fastapi
 uvicorn
-joblib
 scikit-learn
-pandas
+joblib
 numpy
+pydantic
+pandas
+matplotlib
 streamlit
 requests
-matplotlib
-seaborn

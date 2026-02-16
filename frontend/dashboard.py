@@ -95,8 +95,11 @@ with col1:
     
     if st.button("Generate Forecast", type="primary"):
         try:
-            # Call FastAPI Endpoint
-            api_url = "http://127.0.0.1:8000/predict"
+            # ✅ FIX 6: Dynamic API URL for Cloud Deployment
+            # If API_URL env var is set (Render), use it. Otherwise use localhost.
+            default_url = "http://127.0.0.1:8000/predict"
+            api_url = os.getenv("API_URL", default_url)
+            
             response = requests.post(api_url, json=input_data)
             
             if response.status_code == 200:
@@ -118,7 +121,8 @@ with col1:
                 
         except requests.exceptions.ConnectionError:
             st.error("🚨 Connection Refused!")
-            st.info("Make sure your FastAPI backend is running on port 8000.")
+            st.info(f"Tried connecting to: {os.getenv('API_URL', 'http://127.0.0.1:8000/predict')}")
+            st.info("Make sure the Backend API is deployed and running.")
 
 with col2:
     st.subheader("📊 Historical Analysis")
