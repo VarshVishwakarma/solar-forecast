@@ -184,4 +184,4 @@ with col2:
 
 # Footer
 st.markdown("---")
-st.caption("© 2024 Rocket Research & Development | Solar Forecast Engine v1.1")
+st.caption("© 2026 Varsh Vishwakarma | Full-Stack ML Developer | Solar Forecast Engine v1.1")
