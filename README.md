@@ -142,9 +142,10 @@ Visualization: Matplotlib, Seaborn
 
 DevOps: Docker, Uvicorn, Pydantic
 
-👤 Author
+🧑‍💻 Author
 
 Varsh Vishwakarma
+AI • ML • DL • Data Science • Cloud • Full-Stack ML Developer
 
 GitHub: @VarshVishwakarma
 
